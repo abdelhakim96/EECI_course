@@ -102,15 +102,20 @@ S = InvariantApprox_mRPIset_lec_solution(A_K,W,alpha,kappa);
 % minimal representation of S (deleting redundant inequalities)
 
 
-% S.minHRep();
+
+
+S=S.minHRep();
 
 %% Problem 3
 % Implement tightened state and input constraint sets
 % Z = X (-) S and V = U (-) KS
 % and extract the matrices Hx, kx, Hu, ku
+
+
 Z = X-S;
 V = U-K*S;
-
+Z=Z.minHRep();
+V=V.minHRep();
 Hx = Z.A;
 kx = Z.b;
 Hu = V.A;

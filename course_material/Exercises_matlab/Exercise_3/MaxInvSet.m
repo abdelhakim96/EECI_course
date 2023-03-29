@@ -30,7 +30,10 @@ H_new=H;
 while(notFinished)
       
  for i=1:m 
-    [~,fval]=linprog(-H_new(end-m+i,:)*A,H_new,h_new,[],[],[],[],[],options);
+     hhh= -H_new(end-m+i,:)
+     c=-H_new(end-m+i,:)*A;
+
+    [~,fval]=linprog(c,H_new,h_new,[],[],[],[],[],options);
     fmax=max(-fval-h(i),fmax);
  end
  
@@ -38,7 +41,7 @@ while(notFinished)
      notFinished=0;
  else
      fmax=-inf;
-    
+     
      H_new=[H_new; H_new(end-m+1:end,:)*A];
      h_new=[h_new;h_new(end-m+1:end)];   
  end

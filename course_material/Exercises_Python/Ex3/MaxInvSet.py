@@ -54,26 +54,30 @@ def max_inv_set(A, H, h):
     while notFinished:
         
         for i in range(m):
-            c = -H_new[-m+i,:].dot(A)
-            #print(c)
-           # print(h_new)
-           # print(len(H_new[0]))
-           # print(len(h_new))
-            res = linprog(c, A_eq=H_new, b_eq=h_new.T, bounds=(None, None))
+            
+            
+            c = np.array(-H_new[len(H_new)-m+i,:]@(A))
+            res = linprog(c, A_ub=H_new, b_ub=h_new.T, bounds=(None, None))
             fval = res.fun
+            
             fmax = max(-fval-h[i], fmax)
+            print('fval')
+            print(fval)
+            
+            print('fmax')
+            print(fmax)
         
         if fmax <= 0:
             notFinished = False
         else:
             fmax = -np.inf
-            H_new = np.vstack((H_new, H_new[-m:,:].dot(A)))
-            h_new = np.vstack((h_new, h_new[-m:,:]))
+            H_new = np.vstack((H_new, H_new[len(H_new)-m+1,:]@(A)))
+            h_new = np.hstack((h_new, h_new[len(h_new)-m+1]))
             
     G = H_new
     g = h_new
     
     O_Inf = np.array(pypoman.compute_polytope_vertices(G, g))
-
+    
     
     return O_Inf, G, g

@@ -13,7 +13,7 @@ import cdd
 import polytope as pc
 from pytope import Polytope
 import matplotlib.pyplot as plt
-from tube_mpc import run_tube_mpc
+#from tube_mpc import run_tube_mpc
 
 from InvariantApprox_mRPIset_lec import InvariantApprox_mRPIset_lec_solution
 from MaxInvSet import max_inv_set
@@ -34,7 +34,7 @@ J = 0.01
 d = 0.1
 
 # Sampling time
-delta = 0.0100
+delta = 0.01
 
 # continuous-time system                                        
 Ac = np.array([[-Rm/L, -ku/L],
@@ -126,30 +126,49 @@ b=np.array([0.05, 0.05, 0.05, 0.05])
 
 W = np.array(pypoman.compute_polytope_vertices(A, b))
 W = Polytope(W)
-
+W_pol = pc.Polytope(A, b)
 alpha = 0.25
 kappa = 0
-S = InvariantApprox_mRPIset_lec_solution(A_K,W,alpha,kappa)
+S = InvariantApprox_mRPIset_lec_solution(A_K,W,alpha,kappa,W_pol)
 
 #get the set difference
 
+print('S')
+print(len(S.V))
 Z=X-S
 
 
 L=(np.matrix(K) * S)
+ 
+
 A_l,b_l=pypoman.duality.compute_polytope_halfspaces(L.V)
+
+
+
 p = pc.Polytope(A_l, b_l)
 L =pc.extreme(p)           #minimal representation
 
 V = np.array(U.V) + L   
 
+V = Polytope(V)
 
+
+
+Hx= Z.A
+kx=Z.b
+
+
+
+print('kx')
+print(kx)
+#Hu =V.A
+#ku=V.b
 
 Hx,kx = pypoman.duality.compute_polytope_halfspaces(Z.V)
-Hu,ku = pypoman.duality.compute_polytope_halfspaces(V)
+Hu,ku = pypoman.duality.compute_polytope_halfspaces(V.V)
 
 
-kx= np.array(kx)
+kx = np.array(kx)
 ku= np.array(ku)
 
 # Constraints to determine the terminal set {x|HXf*x<=KXf}
@@ -163,8 +182,29 @@ KXf = np.hstack([kx.T, np.array(ku).T])
 [Zf, Hf, Kf] = max_inv_set(A_K, HXf, KXf)
 
 Zf =Polytope(Zf)
+print('hakim Hf!!')
+print(Hf)
+print(Kf)
+'''
+print('Z')
+print(Z.V)
 
+print('V')
+print(V.V)
 
+print('Matrices')
+print(Ad)
+print(Bd)
+print(Hu)
+print(Hx)
+print(ku)
+print(kx)
+print(Hf)
+print(Kf)
+print(HXf)
+print(KXf)print(Hf)
+
+'''
 
 ######### Plotting 
 # Figure 1
@@ -203,7 +243,6 @@ kappa = 1
 #run_tube_mpc(u_max, Q, R, T, Tf, x_init, N, P, Ad, Bd, Hu, Hx, ku, kx, S,dt,K)
 
 
-
 # Set number of MPC iterations
 MPCIterations = 15
 N= 5
@@ -220,6 +259,8 @@ for k in range(N-1):
 for k in range(N-1):
     opti.subject_to(Hu @ v[:, k] <= ku)
     opti.subject_to(Hx @ z[:, k+1] <= kx)
+
+
 
 # Initial constraint
 xt = opti.parameter(n, 1)
@@ -253,7 +294,7 @@ u_MPC = np.zeros((m, MPCIterations-1))
 z_MPC = np.zeros((n, MPCIterations))
 v_MPC = np.zeros((m, MPCIterations-1))
 
-for ii in range(MPCIterations-2):
+for ii in range(MPCIterations-1):
     # solve the optimization problem
     sol = opti.solve()
     # Extract the optimal nominal trajectories z*, v*
@@ -273,8 +314,8 @@ for ii in range(MPCIterations-2):
     # Disturbance at this iteration (random point in W)
     w_min = -0.05
     w_max = 0.05
-    #w = np.random.uniform(w_min, w_max, n)
-    w = w_min + (w_max - w_min) * np.random.rand(1,2)
+    w = np.random.uniform(w_min, w_max, n)
+    #w = w_min + (w_max - w_min) * np.random.rand(1,2)
     print('w')
     print(w)
     # Update the closed-loop system
@@ -334,11 +375,11 @@ print(U.V)
 ZS.plot(ax, color='cyan')
 #ax.plot(Zf+S, color='cyan'), 
 Zf.plot(ax, color='red')
-for ii in range(MPCIterations-1):
+for ii in range(MPCIterations-2):
     safe_v= S.V+z_MPC[:,ii]
     #A,b = pypoman.duality.compute_polytope_halfspaces(safe)
     Safe_P = Polytope(np.array(safe_v))
-    Safe_P.plot(ax, color='yellow')
+    Safe_P.plot(ax, facecolor='yellow', edgecolor='k', edgealpha=0.1)
 
 
 
@@ -353,31 +394,3 @@ plt.show()
 
 
 
-'''
-fig = plt.figure(3)
-ax = fig.add_subplot(111)
-S.plot(ax=ax)
-ax.plot(Zf+S, color='cyan'), ax.plot(Zf)
-for ii in range(MPCIterations-1):
-    ax.plot(S+z_MPC[:,ii], color='yellow')
-ax.plot(x_MPC[0,:], x_MPC[1,:])
-ax.plot(z_MPC[0,:], z_MPC[1,:], 'g-.')
-ax.plot(0,0,'x',color='black')
-ax.set_title('state space')
-ax.set_xlabel('x_1')
-ax.set_ylabel('x_2')
-
-
-
-
-
-# Plot the inputs
-fig = plt.figure(4)
-ax = fig.add_subplot(111)
-ax.stairs(u_MPC), ax.stairs(v_MPC, color='g')
-ax.set_title('input')
-ax.set_xlabel('iteration')
-ax.set_ylabel('u')
-ax.legend(['u_MPC', 'v_MPC'], loc='upper left')
-
-'''
