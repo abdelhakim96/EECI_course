@@ -184,6 +184,7 @@ KXf = np.hstack([kx.T, np.array(ku).T])
 Zf =Polytope(Zf)
 print('hakim Hf!!')
 print(Hf)
+print(len(Hf))
 print(Kf)
 '''
 print('Z')
@@ -252,11 +253,11 @@ z = opti.variable(n, N+1)
 v = opti.variable(m, N)
 
 # Dynamic constraint
-for k in range(N-1):
+for k in range(N):
     opti.subject_to(z[:, k+1] == Ad @ z[:, k] + Bd @ v[:, k])
 
 # Input & state constraints
-for k in range(N-1):
+for k in range(N):
     opti.subject_to(Hu @ v[:, k] <= ku)
     opti.subject_to(Hx @ z[:, k+1] <= kx)
 
@@ -277,7 +278,7 @@ opti.subject_to(Hf @ z[:, N] <= Kf)
 # Cost function
 J = 0
 # Stage cost
-for k in range(N-1):
+for k in range(N):
     J +=  delta * (z[:,k].T) @ Q @ z[:,k] + delta * v[:,k].T@ R @ v[:,k] 
     
 # Terminal cost
@@ -314,8 +315,8 @@ for ii in range(MPCIterations-1):
     # Disturbance at this iteration (random point in W)
     w_min = -0.05
     w_max = 0.05
-    w = np.random.uniform(w_min, w_max, n)
-    #w = w_min + (w_max - w_min) * np.random.rand(1,2)
+    #w = np.random.uniform(w_min, w_max, n)
+    w = w_min + (w_max - w_min) * np.random.rand(1,2)
     print('w')
     print(w)
     # Update the closed-loop system
@@ -375,7 +376,7 @@ print(U.V)
 ZS.plot(ax, color='cyan')
 #ax.plot(Zf+S, color='cyan'), 
 Zf.plot(ax, color='red')
-for ii in range(MPCIterations-2):
+for ii in range(MPCIterations-1):
     safe_v= S.V+z_MPC[:,ii]
     #A,b = pypoman.duality.compute_polytope_halfspaces(safe)
     Safe_P = Polytope(np.array(safe_v))
