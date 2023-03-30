@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from InvariantApprox_mRPIset_lec import InvariantApprox_mRPIset_lec_solution
 from MaxInvSet import max_inv_set
 from scipy.spatial import ConvexHull
-from InvariantApprox_mRPIset_lit import InvariantApprox_mRPIset_lit
+#from InvariantApprox_mRPIset_lit import InvariantApprox_mRPIset_lit
 
 opti = ca.Opti()                   # Create a new optimization problem
 opti.solver('ipopt')               # Choose a solver
@@ -59,11 +59,9 @@ m = Bc.shape[1] # input dimension
 
 
 # Exact discretization to obtain discrete-time system
-# Ad = ???
-# Bd = ???
-#ss_d = control.ss(Ac,Bc,np.eye(n),np.zeros((n,m)),delta)  
 
-#a= control.matlab.c2d(sysc, Ts, method='zoh', prewarp_frequency=None)
+
+
 sysc= control.StateSpace(Ac, Bc, np.eye(n),np.zeros((n,m)))
 
 sysd= control.matlab.c2d(sysc, delta, method='zoh', prewarp_frequency=None)
@@ -81,20 +79,17 @@ Bd = sysd.B
 
 # Discrete-time LQR controller
 # HINT: We use u = Kx, whereas the Casadi function 'dlqr' uses u=-Kx
-# K = ???
-#K = -ca.dlqr(Ad,Bd,Q,R)
+
 K, S, E = control.dlqr(sysd, Q, R)
 
 K =-K
 
 # LQR closed-loop dynamics 
-# A_K = ???
+
 A_K = Ad + Bd @ K
 
 
 A_K =[[0.322024805356563,	-0.866180551029054],[0.0304586636399180, 0.882960946670225]]
-
-
 
 
 
@@ -111,13 +106,10 @@ A=np.array([[1], [-1]])
 b=np.array([10, 10])
 
 
-#p2 = pc.Polytope(A, b)
+
 
 
 U = np.array(pypoman.compute_polytope_vertices(A, b))
-#U = np.hstack([U, U +1,U-1]).T
-
-
 U = Polytope(U)
 
 A=np.array([[1, 0], [-1, 0], [0, 1], [0, -1]])
@@ -131,10 +123,9 @@ alpha = 0.25
 kappa = 0
 S = InvariantApprox_mRPIset_lec_solution(A_K,W,alpha,kappa,W_pol)
 
+
 #get the set difference
 
-print('S')
-print(len(S.V))
 Z=X-S
 
 
@@ -153,12 +144,6 @@ V = np.array(U.V) + L
 V = Polytope(V)
 
 
-
-
-
-
-
-
 Hx,kx = pypoman.duality.compute_polytope_halfspaces(Z.V)
 Hu,ku = pypoman.duality.compute_polytope_halfspaces(V.V)
 
@@ -173,13 +158,13 @@ HXf = np.vstack((Hx, np.array(Hu*K)))
 KXf = np.hstack([kx.T, np.array(ku).T])
 
 # Terminal set Zf
-# [Zf, Hf, Kf] = MaxInvSet(?,?,?)
+
 [Zf, Hf, Kf] = max_inv_set(A_K, HXf, KXf)
 
 Zf =Polytope(Zf)
 
 
-######### Plotting 
+# Plotting Terminal regions
 # Figure 1
 
 
@@ -211,14 +196,12 @@ x_init = np.vstack((-2.0,4.0))
 N = int(T/dt)
 Ns = int(T/dt)
 kappa = 1
-#print(Ad)
-#print(Bd)
-#run_tube_mpc(u_max, Q, R, T, Tf, x_init, N, P, Ad, Bd, Hu, Hx, ku, kx, S,dt,K)
+
 
 
 # Set number of MPC iterations
 MPCIterations = 15
-N= 5
+N= int(T/delta)
 # Define the optimization variables
 
 z = opti.variable(n, N+1)
@@ -271,13 +254,8 @@ for ii in range(MPCIterations-1):
     # solve the optimization problem
     sol = opti.solve()
     # Extract the optimal nominal trajectories z*, v*
-    # z_OL = ???
-    # v_OL = ???
-    # z_MPC = ???
-    # v_MPC = ???
     z_OL = sol.value(z)
     v_OL = sol.value(v)
-    #print(v_OL)
     z_MPC[:,ii] = z_OL[:,0]
     v_MPC[0,ii] = v_OL[0]
   
@@ -287,10 +265,8 @@ for ii in range(MPCIterations-1):
     # Disturbance at this iteration (random point in W)
     w_min = -0.05
     w_max = 0.05
-    #w = np.random.uniform(w_min, w_max, n)
     w = w_min + (w_max - w_min) * np.random.rand(1,2)
-    print('w')
-    print(w)
+ 
     # Update the closed-loop system
     x_MPC[:,ii+1] = Ad @ x_MPC[:,ii] + Bd @ u_MPC[:,ii] + w
     
@@ -298,17 +274,13 @@ for ii in range(MPCIterations-1):
    
     # Prepare warmstart solution for next time step (take the endpiece of the optimal solution 
     # and add a last piece) 
-    # z_init = ???
-    # v_init = ???
-   # z_init = np.hstack((z_OL[:,1:], A_K @ z_OL[:,-1][:,np.newaxis]))
+
    
     a = (A_K @ z_OL[:,len(z_OL)])
     a = a.reshape((1,-1)).T
     z_init = np.hstack((z_OL[:,1:], a))
     
 
-    
-   
     aa = np.array((K @ z_OL[:,len(z_OL)])).flatten()
     v_init = np.hstack((v_OL[1:], aa))
     opti.set_initial(z, z_init)
@@ -317,7 +289,10 @@ for ii in range(MPCIterations-1):
    
     # update initial constraint parameter
     opti.set_value(xt,x_MPC[:,ii+1])
-    
+  
+
+
+  
 # Plots
 # Plot the states of the real (disturbed) system and the sequence of the
 # initial states of the nominal system
